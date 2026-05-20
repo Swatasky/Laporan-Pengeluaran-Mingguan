@@ -1,0 +1,272 @@
+{
+  "name": "Tugas 7_Laporan Pengeluaran Mingguan",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9926a408-7530-4775-8977-c6093fd21da6",
+              "leftValue": "={{ $node[\"Filter 7 Hari & Format Teks\"].json.hasExpenses }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -256,
+        256
+      ],
+      "id": "bfa2dd37-6f01-4a0a-baaf-637897464713",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "model": "xiaomi/mimo-v2-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "807a65ab-bfb3-4dde-a9c0-89696021b70f",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "uTPIDvFfCd4QO9PR",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst today = new Date();\ntoday.setHours(23, 59, 59, 999);\n\nconst sevenDaysAgo = new Date();\nsevenDaysAgo.setDate(today.getDate() - 7);\nsevenDaysAgo.setHours(0, 0, 0, 0);\n\nlet weeklyExpenses = [];\nlet formattedString = \"Data pengeluaran saya minggu ini:\\n\";\nlet hasExpenses = false;\n\nfor (const item of items) {\n  const rawTanggal = item.json.Tanggal;\n  if (!rawTanggal) continue; // Lewati jika baris kosong\n\n  let expenseDate;\n  \n  // Deteksi jika formatnya DD/MM/YYYY\n  if (typeof rawTanggal === 'string' && rawTanggal.includes('/')) {\n    const [day, month, year] = rawTanggal.split(\"/\");\n    expenseDate = new Date(`${year}-${month}-${day}`);\n  } else {\n    // Jika formatnya sudah standar ISO atau objek Date\n    expenseDate = new Date(rawTanggal);\n  }\n\n  // Validasi apakah tanggal berhasil diproses\n  if (isNaN(expenseDate.getTime())) continue;\n\n  if (expenseDate >= sevenDaysAgo && expenseDate <= today) {\n    weeklyExpenses.push(item.json);\n    formattedString += `- ${item.json.Deskripsi}: Rp${item.json[\"Jumlah (IDR)\"]}\\n`;\n    hasExpenses = true;\n  }\n}\n\n// Jika tidak ada data, ubah pesan agar lebih informatif\nif (!hasExpenses) {\n  formattedString = \"Tidak ada data pengeluaran dalam 7 hari terakhir.\";\n}\n\nreturn [{\n  json: {\n    promptData: formattedString,\n    hasExpenses: hasExpenses // Ini akan mengirim true atau false murni\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        256
+      ],
+      "id": "d141ee5d-9429-4967-888c-05c13ef030b0",
+      "name": "Filter 7 Hari & Format Teks"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -880,
+        256
+      ],
+      "id": "7d071ca6-0b58-4bd1-b021-694e49fdda9b",
+      "name": "Setiap Hari Minggu"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1qLghu0ij795ZvkGC16Pj1X8iPR99eDrxXSpaaHYMUgA",
+          "mode": "list",
+          "cachedResultName": "Copy of Data Dummy Catatan Keuangan",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1qLghu0ij795ZvkGC16Pj1X8iPR99eDrxXSpaaHYMUgA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1qLghu0ij795ZvkGC16Pj1X8iPR99eDrxXSpaaHYMUgA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -672,
+        256
+      ],
+      "id": "a671c46b-3ec7-4050-9e47-9db8885a5cd1",
+      "name": "Log Pengeluaran",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wjSCGUYf4QAjMJUg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $node[\"Filter 7 Hari & Format Teks\"].json.hasExpenses }}\n(Notes: sesuaikan dengan nama nodes kalian).\n\n---\nInstruksi: \"Tulis ringkasan kebiasaan belanja saya minggu ini dan beri 1 saran penghematan.\"\n\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -48,
+        160
+      ],
+      "id": "a652cf87-cdfc-49c1-a5ba-2d3857a23386",
+      "name": "Analisis"
+    },
+    {
+      "parameters": {
+        "chatId": "5326080482",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        160
+      ],
+      "id": "d2d98ae0-35e7-48ee-a05d-28d10eef705e",
+      "name": "Pesan True",
+      "webhookId": "dbe82ca6-bd59-44fe-8e33-144e85b09005",
+      "credentials": {
+        "telegramApi": {
+          "id": "CBSXYRafujoNlzli",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "5326080482",
+        "text": "=Tidak di temukan log pengeluaran untuk 7 hari terakhir",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -48,
+        352
+      ],
+      "id": "5f3b01b2-d76b-42f4-a072-3d2d5afcdcfe",
+      "name": "Pesan False",
+      "webhookId": "dbe82ca6-bd59-44fe-8e33-144e85b09005",
+      "credentials": {
+        "telegramApi": {
+          "id": "CBSXYRafujoNlzli",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Analisis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pesan False",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analisis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter 7 Hari & Format Teks": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setiap Hari Minggu": {
+      "main": [
+        [
+          {
+            "node": "Log Pengeluaran",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Pengeluaran": {
+      "main": [
+        [
+          {
+            "node": "Filter 7 Hari & Format Teks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisis": {
+      "main": [
+        [
+          {
+            "node": "Pesan True",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a53bb431-a31e-436c-b032-fd0dfcab4eef",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fc7d53e27061c6249d410e08c81c40f0930667c04cfb09903a84ad54c928b157"
+  },
+  "id": "7Sxi7wuq6zJuZwUF",
+  "tags": []
+}
